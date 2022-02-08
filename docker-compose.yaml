@@ -1,0 +1,39 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  adcdc:
+    build: .
+    user: "${UID}:${GID}"
+    image: adcdc:v0.1
+  adcdc-dev-pycharm:  # TODO: this must be filled by the cli
+    build:
+      context: ./
+      dockerfile: ./examples/pycharm/Dockerfile
+    user: "${UID}:${GID}"
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    volumes:
+      - .:/home/docker/code
+      # visual mounts for IDEs with a GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    # for gui use, is gpu is required?
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    environment:
+      - DISPLAY=${DISPLAY}
+  adcdc-dev-vim:  # TODO: this must be filled by the cli
+    build:
+      context: ./
+      dockerfile: ./examples/lunarvim/Dockerfile
+    user: "${UID}:${GID}"
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    volumes:
+      - .:/home/docker/code
+      - ./examples/lunarvim/config.lua:/home/docker/.config/lvim/config.lua
+      - ./examples/lunarvim/userconfig.lua:/home/docker/.config/lvim/lua/userconfig.lua
+
