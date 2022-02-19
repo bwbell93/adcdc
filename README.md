@@ -33,6 +33,17 @@ For everything in one command use:
 export UID=$(id -u) && export GID=$(id -g) && docker-compose build adcdc-dev && docker-compose run --rm adcdc-dev
 ```
 
+## Magic command
+`adcdc magic` automatically walks you through the steps by making many assumptions.
+Generally I recommend using this command only initially to do the setup.
+First it checks the `.devcontainer` folder for `adcdc-docker-template` and `adcdc-config.yaml` files. 
+
+## Composing multiple adcdc templates together
+TODO: we need to support this workflow, but it conflicts with the current config layout.
+Often times you will want to keep project specific dev requirements (testing, doc generation, etc.) separate from your own development workflow (installing neovim, tmux, etc.).
+For this use case, adcdc supports multiple adcdc-docker-templates and simply appends the contents of each list item sequentially.
+To use this feature, change the `adcdc-docker-template` in your `adcdc-config.yaml` from a single value to a list.
+
 ## Workflow
 Without the CLI you can peruse the docker-compose.yaml & examples folders for the relevant files used.
 The CLI just helps automate creating the docker-compose.yaml but you'll have to make your own config similar to the examples.
@@ -45,3 +56,14 @@ Below are some more detailed notes on why some decisions were made or what has t
 Docker compose does not support pulling the $UID & $GID since they're not env variables. See: https://github.com/docker/compose/issues/2380.
 
 You can simply do `export UID=$(id -u) && export GID=$(id -g)` or add these as env variables in your `.bashrc`
+
+# Workflow Steps
+Assuming you've installed this package and created an `adcdc-config.yaml` and `adcdc-docker-template` in a `.devcontainer` directory inside your project run the following command:
+```bash
+adcdc create ./devcontainer/adcdc-config.yaml
+```
+
+# Developer Workflow
+This project is developed using itself! This way it can serve as a living example of adcdc's capabilities.
+Check out `examples/bwbell93/` to see my configuration or create your own and run the [Workflow
+Steps](#markdown-header-workflow-steps)

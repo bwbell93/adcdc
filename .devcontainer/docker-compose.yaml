@@ -1,0 +1,47 @@
+services:
+  adcdc:
+    build: .
+    image: adcdc:v0.1
+    user: ${UID}:${GID}
+  adcdc-dev:
+    build:
+      context: ./
+      dockerfile: .devcontainer/Dockerfile
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+    user: ${UID}:${GID}
+    volumes:
+    - .:/home/docker/adcdc
+  adcdc-dev-pycharm:
+    build:
+      context: ./
+      dockerfile: ./examples/pycharm/Dockerfile
+    command: /bin/bash
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - capabilities:
+            - gpu
+    environment:
+    - DISPLAY=${DISPLAY}
+    stdin_open: true
+    tty: true
+    user: ${UID}:${GID}
+    volumes:
+    - .:/home/docker/code
+    - /tmp/.X11-unix:/tmp/.X11-unix
+  adcdc-dev-vim:
+    build:
+      context: ./
+      dockerfile: ./examples/lunarvim/Dockerfile
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+    user: ${UID}:${GID}
+    volumes:
+    - .:/home/docker/code
+    - ./examples/lunarvim/config.lua:/home/docker/.config/lvim/config.lua
+    - ./examples/lunarvim/userconfig.lua:/home/docker/.config/lvim/lua/userconfig.lua
+version: '3.9'
