@@ -92,16 +92,18 @@ def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: st
     
     # overwrite build 
     dev_service["build"] = {
-        "context": "./",
+        # NOTE: this is hardcoded to assume .devcontainer folder, see TODO item in create()
+        "context": "../",
         "dockerfile": target_dockerfile
     }
     # remove image
     del dev_service["image"]
 
-    # add stdin, tty, and command
+    # add stdin, tty, command, and user
     dev_service["tty"] = True
     dev_service["stdin_open"] = True
     dev_service["command"] = target_command
+    dev_service["user"] = "${UID}:${GID}"
 
     # add a volume from cwd to target code path
     if "volumes" not in dev_service:
@@ -116,25 +118,38 @@ def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: st
 
 
 @click.command()
-@click.argument("adcdc_config_file", type=click.File("rb"))
-@click.argument("target_service")
 @click.argument("docker_compose_file", type=click.File("rb"))
-@click.argument("docker_template_file", type=click.File("r"))
-@click.argument("output_path", type=click.Path())
-def create(adcdc_config_file: str, target_service: str, docker_compose_file: str, docker_template_file: str, output_path: str):
+@click.argument("target_service")
+@click.argument("adcdc_config_file")
+@click.option("-f", "--force-overwrite", default=False, is_flag=True)
+def create(docker_compose_file: str, target_service: str, adcdc_config_file: str, force_overwrite: bool):
     """
     The create command needs to create a Dockerfile resolved from the adcdc-docker-template and original Dockerfile
     then create a docker-compose.yaml file that references this + includes the user configured command/volumes/etc.
     """
+    # TODO: making this configurable is really hard
+    output_path = ".devcontainer"
     # load the adcdc_config and replace any keywords
-    adcdc_config = load(adcdc_config_file, Loader)
+    with open(adcdc_config_file, "rb") as in_adcconfig_file:
+        adcdc_config = load(in_adcconfig_file, Loader)
     adcdc_config = _possible_replace_keywords_in_config(adcdc_config)
 
     # load the docker-compose file
     docker_compose = load(docker_compose_file, Loader)
 
-    # load the docker template
-    docker_template = docker_template_file.read().splitlines()
+    # load the adcdc docker template
+    # first check if relative path
+    docker_template_pwd = os.path.split(adcdc_config_file)[0]
+    docker_template_relative = os.path.join(docker_template_pwd, adcdc_config["adcdc-docker-template"])
+    if os.path.exists(docker_template_relative):
+        docker_template_file = docker_template_relative
+    elif os.path.exists(adcdc_config["adcdc-docker-template"]):
+        docker_template_file = adcdc_config["adcdc-docker-template"]
+    else:
+        raise FileNotFoundError(f"Unable to find adcdc docker template at {docker_template_relative} or {adcdc_config['adcdc-docker-template']}")
+    # read docker template
+    with open(docker_template_file, "r") as in_docker_template:
+        docker_template = in_docker_template.read().splitlines()
 
     # create the devdockerfile lines
     dev_dockerfile = create_docker_from_template(adcdc_config, docker_compose["services"][target_service]["image"], docker_template)
@@ -144,8 +159,8 @@ def create(adcdc_config_file: str, target_service: str, docker_compose_file: str
 
     # write out the dockerfile to outputpath/Dockerfile
     output_dockerfile_path = os.path.join(output_path, "Dockerfile")
-    if os.path.exists(output_dockerfile_path):
-        raise FileExistsError(f"Output dockerfile {output_dockerfile_path} exists already.")
+    if os.path.exists(output_dockerfile_path) and not force_overwrite:
+        raise FileExistsError(f"Output dockerfile {output_dockerfile_path} exists already. Use the -f flag to force overwrite.")
     # write out to the dockerfile path
     with open(output_dockerfile_path, "w") as out_file:
         for line in dev_dockerfile:
@@ -154,8 +169,8 @@ def create(adcdc_config_file: str, target_service: str, docker_compose_file: str
     # now create the new docker-compose.yaml
     dev_compose_yml = add_dev_compose_yaml(docker_compose, target_service, output_dockerfile_path, adcdc_config["code-mount"], adcdc_config["command"])
     output_docker_compose_path = os.path.join(output_path, "docker-compose.yaml")
-    if os.path.exists(output_docker_compose_path):
-        raise FileExistsError(f"Output docker-compose path {output_docker_compose_path} exists already.")
+    if os.path.exists(output_docker_compose_path) and not force_overwrite:
+        raise FileExistsError(f"Output docker-compose path {output_docker_compose_path} exists already. Use the -f flag to force overwrite")
     # write out to the docker compose filepath
     with open(output_docker_compose_path, "w") as out_file:
         dump(dev_compose_yml, out_file)

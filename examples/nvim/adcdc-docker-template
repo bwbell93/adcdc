@@ -3,6 +3,7 @@
 ### DevContainer Install Steps
 # Install neovim
 USER root
+RUN apt update && apt install -y curl
 WORKDIR /tmp
 RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
 RUN chmod 755 nvim.appimage
