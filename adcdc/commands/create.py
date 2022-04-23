@@ -78,7 +78,7 @@ def create_docker_from_template(adcdc_config, original_image: str, docker_templa
     return docker_template
 
 
-def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: str, target_codepath: str, target_command: str):
+def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: str, adcdc_config):
     """
     Adds a dev for the target service given a yaml docker-compose config.
     NOTE: this is an inplace operation & updates the compose_yml arg
@@ -102,18 +102,31 @@ def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: st
     # add stdin, tty, command, and user
     dev_service["tty"] = True
     dev_service["stdin_open"] = True
-    dev_service["command"] = target_command
+    dev_service["command"] = adcdc_config["command"]
     dev_service["user"] = "${UID}:${GID}"
 
     # add a volume from cwd to target code path
     if "volumes" not in dev_service:
         dev_service["volumes"] = []
-    volume_str = f".:{target_codepath}"
+    volume_str = f".:{adcdc_config['code-mount']}"
     # if user is already mounting their code don't re-add
     if volume_str not in dev_service["volumes"]:
-        dev_service["volumes"].append(target_codepath)
+        dev_service["volumes"].append(adcdc_config["code-mount"])
+    # add any extra volumes
+    for v in adcdc_config["volumes"]:
+        dev_service["volumes"].append(v)
+
+    # add any additional user configs if they exist
+    if "docker-compose-configs" in adcdc_config:
+        for key, value in adcdc_config["docker-compose-configs"].items():
+            dev_service[key] = value
 
     compose_yml["services"][f"{target_service}-dev"] = dev_service
+
+    # remove the service that we created from -dev.
+    # this prevents confusion if trying to use the adcdc build command for the main container
+    # which is unsupported
+    del compose_yml["services"][target_service]
     return compose_yml
 
 
@@ -167,13 +180,14 @@ def create(docker_compose_file: str, target_service: str, adcdc_config_file: str
             out_file.write(f"{line}\n")
 
     # now create the new docker-compose.yaml
-    dev_compose_yml = add_dev_compose_yaml(docker_compose, target_service, output_dockerfile_path, adcdc_config["code-mount"], adcdc_config["command"])
+    dev_compose_yml = add_dev_compose_yaml(docker_compose, target_service, output_dockerfile_path, adcdc_config)
     output_docker_compose_path = os.path.join(output_path, "docker-compose.yaml")
     if os.path.exists(output_docker_compose_path) and not force_overwrite:
         raise FileExistsError(f"Output docker-compose path {output_docker_compose_path} exists already. Use the -f flag to force overwrite")
     # write out to the docker compose filepath
     with open(output_docker_compose_path, "w") as out_file:
-        dump(dev_compose_yml, out_file)
+        # don't sort keys so we can preserve order of the original file
+        dump(dev_compose_yml, out_file, sort_keys=False)
 
 
 if __name__ == "__main__":

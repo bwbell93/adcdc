@@ -1,0 +1,24 @@
+# NOTE: adcdc automatically fills the FROM tag
+
+### DevContainer Install Steps
+
+USER root
+# don't prompt for keyboard layout
+ENV DEBIAN_FRONTEND=noninteractive
+# install xserver for gui, java requires fonts
+RUN apt update && apt install -y xserver-xorg libfontconfig1
+
+# Install pycharm
+WORKDIR /tmp
+RUN curl -LO https://download.jetbrains.com/python/pycharm-community-2021.3.1.tar.gz
+RUN tar xzf pycharm-community-2021.3.1.tar.gz -C /opt/
+
+USER docker
+# Alias charm to run pycharm
+RUN echo 'alias pycharm="bash /opt/pycharm-community-2021.3.1/bin/pycharm.sh"' >> ~/.bashrc
+### End DevContainer Install Steps
+
+# adcdc automatically restores the last WORKDIR or you can change it in adcdc-config.yaml
+# adcdc automatically restores the last USER or you can change it in adcdc-config.yaml
+# CMD/ENTRYPOINT is overridden in the adcdc-config.yaml
+

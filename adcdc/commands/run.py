@@ -1,3 +1,6 @@
+"""
+NOTE: this is largely copied from the build commmand, maybe generalize later
+"""
 from typing import List, Tuple
 
 import click
@@ -23,11 +26,10 @@ def get_uid_gid() -> Tuple[str, str]:
 
 @click.command()
 @click.argument("target_service")
-@click.option("-f", "docker_compose_file", default=".devcontainer/docker-compose.yaml")
 @click.option("-s", "--silent", default=False, is_flag=True)
-def build(target_service: str, docker_compose_file: str, silent: bool):
+def run(target_service: str, silent: bool):
     """
-    Builds the dev service specified by the cli argument.
+    Runs the dev service specified by the cli argument.
     """
     # get the uid & gid for the user
     UID, GID = get_uid_gid()
@@ -40,6 +42,8 @@ def build(target_service: str, docker_compose_file: str, silent: bool):
     env_plus_uid_gid = {
         # PATH is required so we can get docker-compose from wherever it is
         "PATH": env["PATH"],
+        # DISPLAY is required for GUI based devcontainers
+        "DISPLAY": env["DISPLAY"],
         # TODO: are there other env vars we need?
         "UID": UID,
         "GID": GID
@@ -50,9 +54,11 @@ def build(target_service: str, docker_compose_file: str, silent: bool):
         "docker-compose",
         # need to specify .devcontainer
         "-f",
-        docker_compose_file,
-        # we are building the target service
-        "build",
+        ".devcontainer/docker-compose.yaml",
+        # we are running the target service
+        "run",
+        # we want to remove the container after exit
+        "--rm",
         f"{target_service}"
     ]
     # print the command so user knows what we're doing
@@ -65,4 +71,4 @@ def build(target_service: str, docker_compose_file: str, silent: bool):
 
 
 if __name__ == "__main__":
-    build()  # type: ignore
+    run()  # type: ignore

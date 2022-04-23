@@ -11,7 +11,8 @@ RUN chmod 755 nvim.appimage
 RUN ./nvim.appimage --appimage-extract
 RUN ./squashfs-root/AppRun --version
 # Optional: exposing nvim globally
-RUN mv squashfs-root / && ln -s /squashfs-root/AppRun /usr/bin/nvim
+RUN mv squashfs-root /
+RUN ln -s /squashfs-root/AppRun /usr/bin/nvim
 ### End DevContainer Install Steps
 
 # adcdc automatically restores the last WORKDIR or you can change it in adcdc-config.yaml
