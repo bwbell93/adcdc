@@ -116,6 +116,14 @@ def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: st
     for v in adcdc_config["volumes"]:
         dev_service["volumes"].append(v)
 
+    # add named volumes to the top level docker-compose yaml
+    # these are a dict
+    if "volumes" not in compose_yml:
+        compose_yml["volumes"] = {}
+    if "named-volumes" in adcdc_config:
+        for name, vol_args in adcdc_config["named-volumes"].items():
+            compose_yml["volumes"][name] = vol_args
+
     # add any additional user configs if they exist
     if "docker-compose-configs" in adcdc_config:
         for key, value in adcdc_config["docker-compose-configs"].items():

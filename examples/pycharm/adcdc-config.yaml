@@ -18,19 +18,38 @@ command: /bin/bash
 
 # Determines how to mount your code directory in the dockerfile
 # Filepaths should be relative to your project's pwd. In this example `.` will be everything in the adcdc folder
-code-mount: .:/home/${DOCKERUSER}/adcdc
+code-mount: ../:/home/${DOCKERUSER}/adcdc
 
-# Additional volues for configs or other things
+# Additional volumes for configs or other things
 volumes:
   # Generally absolute (or user expanded) paths are best. Relative filepaths are relative to your project's pwd
   - /tmp/.X11-unix:/tmp/.X11-unix
+  # Named volumes also work
+
+  # see associated code in adcdc-docker-template to set these up
+  # This sets up a persistent folder for things like bash_history
+  - persistent:/.persistent
+  # These set up persistent folders for pycharm's storage
+  - pycharm_config:/home/${DOCKERUSER}/.config/JetBrains
+  - pycharm_cache:/home/${DOCKERUSER}/.cache/JetBrains
+  - pycharm_share:/home/${DOCKERUSER}/.local/share/JetBrains
+  - pycharm_java:/home/${DOCKERUSER}/.java
+
+# Named volumes that you want to create, for example the bash_history above
+named-volumes:
+  # these have the same args as in docker-compose.yaml and are directly copied in
+  persistent: {}  # {} will create a new named volume
+  pycharm_config: {}
+  pycharm_cache: {}
+  pycharm_share: {}
+  pycharm_java: {}
 
 # WORKDIR command to fill out in the adcdc-docker-template.
 # Commonly you can set this to `auto` to pull the last WORKDIR from the original Dockerfile
 # TODO: support `auto`
 workdir: /home/${DOCKERUSER}/adcdc
 
-# Other configs that are copied directly into the docker-compose.yaml
+# Other configs that are copied directly into the service in the docker-compose.yaml
 docker-compose-configs:
   environment:
     - DISPLAY=${DISPLAY}

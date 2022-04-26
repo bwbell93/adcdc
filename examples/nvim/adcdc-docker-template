@@ -15,6 +15,20 @@ RUN mv squashfs-root /
 RUN ln -s /squashfs-root/AppRun /usr/bin/nvim
 ### End DevContainer Install Steps
 
+### Persist data across container starts like configs or bash history
+# YOU MUST create the desired folder here & set permissions, it's a docker thing
+# see https://github.com/docker/compose/issues/3270 for more details
+RUN mkdir /.persistent
+# TODO: support ${DOCKERUSER}
+RUN chown docker:docker /.persistent
+
+# For example, bash_history
+# set bash $HISTFILE to point to the persistent data directory under the service user
+# TODO: support ${DOCKERUSER}
+USER docker
+ENV HISTFILE=/.persistent/.bash_history
+
+
 # adcdc automatically restores the last WORKDIR or you can change it in adcdc-config.yaml
 # adcdc automatically restores the last USER or you can change it in adcdc-config.yaml
 # CMD/ENTRYPOINT is overridden in the adcdc-config.yaml
