@@ -1,9 +1,10 @@
+from io import TextIOWrapper
 from typing import List, Dict, Any
 import click
 import os
 from functools import partial
 from copy import copy
-from yaml import load, dump, Loader
+import yaml
 
 
 def recurse_list_apply(cfg_list: List[Any], fn, item_filter) -> List[Any]:
@@ -139,35 +140,56 @@ def add_dev_compose_yaml(compose_yml, target_service: str, target_dockerfile: st
 
 
 @click.command()
-@click.argument("docker_compose_file", type=click.File("rb"))
 @click.argument("target_service")
-@click.argument("adcdc_config_file")
-@click.option("-f", "--force-overwrite", default=False, is_flag=True)
-def create(docker_compose_file: str, target_service: str, adcdc_config_file: str, force_overwrite: bool):
+@click.argument("adcdc_config_yaml", type=click.File("r"))
+@click.option("-f", "--file", type=str, default=None, 
+              help="Specify an alternate compose file.          default: r\"(docker-)?compose.(yaml|yml)\"")
+@click.option("-o", "--overwrite", default=False, is_flag=True, help="Overwrite existing dev docker-compose.yaml")
+def create(target_service: str, adcdc_config_yaml: TextIOWrapper, file: str, overwrite: bool):
     """
-    The create command needs to create a Dockerfile resolved from the adcdc-docker-template and original Dockerfile
-    then create a docker-compose.yaml file that references this + includes the user configured command/volumes/etc.
+    Creates .devcontainer files from an adcdc config yaml.
     """
     # TODO: making this configurable is really hard
     output_path = ".devcontainer"
     # load the adcdc_config and replace any keywords
-    with open(adcdc_config_file, "rb") as in_adcconfig_file:
-        adcdc_config = load(in_adcconfig_file, Loader)
+    adcdc_config = yaml.safe_load(adcdc_config_yaml)
     adcdc_config = _possible_replace_keywords_in_config(adcdc_config)
 
-    # load the docker-compose file
-    docker_compose = load(docker_compose_file, Loader)
+    # load the docker-compose file from default locations
+    docker_compose_file = None
+    # try all valid variations in correct order, see https://docs.docker.com/compose/compose-file/
+    variations = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"]
+    if file is None:
+        for v in variations:
+            if os.path.exists(v):
+                docker_compose_file = v
+                break
+    # else manually entered compose file location
+    else:
+        docker_compose_file = file
+
+    # check if found in valid variations
+    if docker_compose_file is None:
+        raise click.ClickException(f"Can't find a valid docker compose file. Tried {', '.join(variations)}")
+    # check if manually entered path is a file
+    if not os.path.exists(docker_compose_file) or not os.path.isfile(docker_compose_file):
+        raise click.ClickException(f"Can't the docker compose file at '{docker_compose_file}'")
+    # open compose file and read it in with yaml
+    with open(docker_compose_file, "r") as in_file:
+        docker_compose = yaml.safe_load(in_file)
 
     # load the adcdc docker template
-    # first check if relative path
-    docker_template_pwd = os.path.split(adcdc_config_file)[0]
+    docker_template_pwd = os.path.split(adcdc_config_yaml.name)[0]
     docker_template_relative = os.path.join(docker_template_pwd, adcdc_config["adcdc-docker-template"])
+    # first check if relative path
     if os.path.exists(docker_template_relative):
         docker_template_file = docker_template_relative
+    # otherwise check absolute
     elif os.path.exists(adcdc_config["adcdc-docker-template"]):
         docker_template_file = adcdc_config["adcdc-docker-template"]
+    # otherwise invalid path
     else:
-        raise FileNotFoundError(f"Unable to find adcdc docker template at {docker_template_relative} or {adcdc_config['adcdc-docker-template']}")
+        raise click.ClickException(f"Unable to find adcdc docker template at '{docker_template_relative}' or '{adcdc_config['adcdc-docker-template']}'")
     # read docker template
     with open(docker_template_file, "r") as in_docker_template:
         docker_template = in_docker_template.read().splitlines()
@@ -180,8 +202,8 @@ def create(docker_compose_file: str, target_service: str, adcdc_config_file: str
 
     # write out the dockerfile to outputpath/Dockerfile
     output_dockerfile_path = os.path.join(output_path, "Dockerfile")
-    if os.path.exists(output_dockerfile_path) and not force_overwrite:
-        raise FileExistsError(f"Output dockerfile {output_dockerfile_path} exists already. Use the -f flag to force overwrite.")
+    if os.path.exists(output_dockerfile_path) and not overwrite:
+        raise click.ClickException(f"Output dockerfile '{output_dockerfile_path}' exists already. Use the -o flag to overwrite.")
     # write out to the dockerfile path
     with open(output_dockerfile_path, "w") as out_file:
         for line in dev_dockerfile:
@@ -190,12 +212,12 @@ def create(docker_compose_file: str, target_service: str, adcdc_config_file: str
     # now create the new docker-compose.yaml
     dev_compose_yml = add_dev_compose_yaml(docker_compose, target_service, output_dockerfile_path, adcdc_config)
     output_docker_compose_path = os.path.join(output_path, "docker-compose.yaml")
-    if os.path.exists(output_docker_compose_path) and not force_overwrite:
-        raise FileExistsError(f"Output docker-compose path {output_docker_compose_path} exists already. Use the -f flag to force overwrite")
+    if os.path.exists(output_docker_compose_path) and not overwrite:
+        raise click.ClickException(f"Output docker-compose path '{output_docker_compose_path}' exists already. Use the -o flag to overwrite")
     # write out to the docker compose filepath
     with open(output_docker_compose_path, "w") as out_file:
         # don't sort keys so we can preserve order of the original file
-        dump(dev_compose_yml, out_file, sort_keys=False)
+        yaml.dump(dev_compose_yml, out_file, sort_keys=False)
 
 
 if __name__ == "__main__":

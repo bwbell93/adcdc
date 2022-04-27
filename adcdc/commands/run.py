@@ -26,10 +26,10 @@ def get_uid_gid() -> Tuple[str, str]:
 
 @click.command()
 @click.argument("target_service")
-@click.option("-s", "--silent", default=False, is_flag=True)
+@click.option("-s", "--silent", default=False, is_flag=True, help="Don't print the command being run.")
 def run(target_service: str, silent: bool):
     """
-    Runs the dev service specified by the cli argument.
+    Runs the dev service specified in TARGET_SERVICE.
     """
     # get the uid & gid for the user
     UID, GID = get_uid_gid()

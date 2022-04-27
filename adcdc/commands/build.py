@@ -23,11 +23,12 @@ def get_uid_gid() -> Tuple[str, str]:
 
 @click.command()
 @click.argument("target_service")
-@click.option("-f", "docker_compose_file", default=".devcontainer/docker-compose.yaml")
-@click.option("-s", "--silent", default=False, is_flag=True)
-def build(target_service: str, docker_compose_file: str, silent: bool):
+@click.option("-f", "--file", type=str, default=".devcontainer/docker-compose.yaml", 
+              help="Specify an alternate compose file.                      (default: .devcontainer/docker-compose.yaml)")
+@click.option("-s", "--silent", default=False, is_flag=True, help="Don't print the command being run.")
+def build(target_service: str, file: str, silent: bool):
     """
-    Builds the dev service specified by the cli argument.
+    Builds the dev service specified in TARGET_SERVICE.
     """
     # get the uid & gid for the user
     UID, GID = get_uid_gid()
@@ -50,7 +51,7 @@ def build(target_service: str, docker_compose_file: str, silent: bool):
         "docker-compose",
         # need to specify .devcontainer
         "-f",
-        docker_compose_file,
+        file,
         # we are building the target service
         "build",
         f"{target_service}"

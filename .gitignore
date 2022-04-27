@@ -1,3 +1,4 @@
 .devcontainer/
 todo.txt
 *.egg-info
+__pycache__
