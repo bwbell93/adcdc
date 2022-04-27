@@ -1,0 +1,47 @@
+# TODO: support docker-user: auto
+# This will pull the last user command from your Dockerfile or default to root
+# Or can be overridden at the cli
+docker-user: docker
+
+# Location of adcdc-docker-template, relative paths will be parsed by this config file's location.
+# This allows you to store this config & your adcdc-docker-template in the same directory in your project
+adcdc-docker-template: ./adcdc-docker-template
+
+###################################################################################
+# ${DOCKERUSER} is supported for any of the following config items
+# This will be auto-replaced by the docker-user config item defined above
+###################################################################################
+
+# Any shell command works: /bin/zsh or /home/${DOCKERUSER}/.local/bin/fish or /opt/alacritty -e /usr/bin/tmux
+# To change the working dir, set that in your dev-dockerfile
+command: /bin/bash
+
+# Determines how to mount your code directory in the dockerfile
+# Filepaths should be relative to your project's pwd. In this example `.` will be everything in the adcdc folder
+code-mount: ../:/home/${DOCKERUSER}/adcdc
+
+# Additional volumes for configs or other things
+volumes:
+  # Generally absolute (or user expanded) paths are best. Relative filepaths are relative to your project's pwd
+  - ~/.config/nvim/init.vim:/home/${DOCKERUSER}/.config/nvim/init.vim
+  - ./examples/nvim/adcdc-config.yaml:/home/${DOCKERUSER}/relative_example.yaml
+  # Named volumes also work, this example sets up a folder that you can store persistent config in
+  # see associated code in adcdc-docker-template to set this up to store .bash_history
+  - persistent_data:/.persistent
+
+# Named volumes that you want to create, for example the bash_history above
+named-volumes:
+  # these have the same args as in docker-compose.yaml and are directly copied in
+  persistent_data: {}  # {} will create a new named volume
+
+# WORKDIR command to fill out in the adcdc-docker-template.
+# Commonly you can set this to `auto` to pull the last WORKDIR from the original Dockerfile
+# TODO: support `auto`
+workdir: /home/${DOCKERUSER}/adcdc
+
+###
+# Optional configs
+#
+###
+
+

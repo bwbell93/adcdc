@@ -1,0 +1,51 @@
+# NOTE: adcdc automatically fills the FROM tag
+
+### DevContainer Install Steps
+
+USER root
+# don't prompt for keyboard layout
+ENV DEBIAN_FRONTEND=noninteractive
+# install xserver for gui, java requires fonts
+RUN apt update && apt install -y xserver-xorg libfontconfig1
+
+# Install pycharm
+WORKDIR /tmp
+RUN curl -LO https://download.jetbrains.com/python/pycharm-community-2021.3.1.tar.gz
+RUN tar xzf pycharm-community-2021.3.1.tar.gz -C /opt/
+
+### Persist data across container starts like configs or bash history
+# YOU MUST create the desired folder here & set permissions, it's a docker thing
+# see https://github.com/docker/compose/issues/3270 for more details
+
+# TODO: support ${DOCKERUSER}
+# location for pycharm config
+RUN mkdir -p /home/docker/.config/JetBrains
+RUN chown docker:docker /home/docker/.config/JetBrains
+# for cached files
+RUN mkdir -p /home/docker/.cache/JetBrains
+RUN chown docker:docker /home/docker/.cache/JetBrains
+# for license consent
+RUN mkdir -p /home/docker/.local/share/JetBrains
+RUN chown docker:docker /home/docker/.local/share/JetBrains
+# for license consent also other java stuff???
+RUN mkdir -p /home/docker/.java
+RUN chown docker:docker /home/docker/.java
+
+# location for other persistent storage like bash history
+RUN mkdir /.persistent
+# TODO: support ${DOCKERUSER}
+RUN chown docker:docker /.persistent
+
+# TODO: support ${DOCKERUSER}
+USER docker
+# set bash $HISTFILE to point to the persistent data directory under the service user
+ENV HISTFILE=/.persistent/.bash_history
+
+# Alias charm to run pycharm
+RUN echo 'alias pycharm="bash /opt/pycharm-community-2021.3.1/bin/pycharm.sh"' >> ~/.bashrc
+### End DevContainer Install Steps
+
+# adcdc automatically restores the last WORKDIR or you can change it in adcdc-config.yaml
+# adcdc automatically restores the last USER or you can change it in adcdc-config.yaml
+# CMD/ENTRYPOINT is overridden in the adcdc-config.yaml
+
