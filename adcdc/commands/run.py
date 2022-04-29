@@ -42,6 +42,8 @@ def run(target_service: str, silent: bool):
     env_plus_uid_gid = {
         # PATH is required so we can get docker-compose from wherever it is
         "PATH": env["PATH"],
+        # HOME is required so we can mount volumes from user dirs
+        "HOME": env["HOME"],
         # DISPLAY is required for GUI based devcontainers
         "DISPLAY": env["DISPLAY"],
         # TODO: are there other env vars we need?
