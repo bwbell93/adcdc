@@ -26,7 +26,8 @@ def get_uid_gid() -> Tuple[str, str]:
 @click.option("-f", "--file", type=str, default=".devcontainer/docker-compose.yaml", 
               help="Specify an alternate compose file.                      (default: .devcontainer/docker-compose.yaml)")
 @click.option("-s", "--silent", default=False, is_flag=True, help="Don't print the command being run.")
-def build(target_service: str, file: str, silent: bool):
+@click.option("-c", "--clean", default=False, is_flag=True, help="Bypass build cache and perform a clean build.")
+def build(target_service: str, file: str, silent: bool, clean: bool):
     """
     Builds the dev service specified in TARGET_SERVICE.
     """
@@ -60,6 +61,11 @@ def build(target_service: str, file: str, silent: bool):
         "build",
         f"{target_service}"
     ]
+
+    if clean: # user requests a clean build
+        no_cache_idx = compose_args.index("build") + 1
+        compose_args.insert(no_cache_idx, "--no-cache")
+
     # print the command so user knows what we're doing
     if not silent:
         cmd_str = " ".join(compose_args)
